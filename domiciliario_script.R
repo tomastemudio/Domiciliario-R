@@ -27,7 +27,7 @@ media_30 <- mean(resultado_30)
 sd_30 <- sd(resultado_30)
 glue('n utilizado: {n1}; media: {media_30}; desvio estandar: {sd_30}')
 hist(resultado_30, main = 'Histograma de resultado con n = 30', xlab = "Media", col = 'lightblue', prob = T, ylim = c(0,2.5))
-lines(density(resultado_30), col = 'red')
+lines(density(resultado_30), col = 'blue')
 
 ### Con n = 100
 
@@ -42,7 +42,7 @@ media_100 <- mean(resultado_100)
 sd_100 <- sd(resultado_100)
 glue('n utilizado: {n2}; media: {media_100}; desvio estandar: {sd_100}')
 hist(resultado_100, main = 'Histograma de resultado', xlab = "Media", col = 'lightblue', prob =T)
-lines(density(resultado_100), col = 'red')
+lines(density(resultado_100), col = 'darkgreen')
 
 ### Con n = 500
 
@@ -71,8 +71,8 @@ for (i in 1:simulaciones) {
 media_1000 <- mean(resultado_1000)
 sd_1000 <- sd(resultado_1000)
 glue('n utilizado: {n4}; media: {media_1000}; desvio estandar: {sd_1000}')
-hist(resultado_1000, main = 'Histograma de resultado', xlab = "Media", col = 'lightblue', prob = T)
-lines(density(resultado_1000), col = 'red')
+hist(resultado_1000, main = 'Histograma de resultado', xlab = "Media", col = 'lightblue', prob = T, ylim = c(0,14))
+lines(density(resultado_1000), col = 'pink')
 
 ## II)
 
@@ -118,8 +118,8 @@ for (i in 1:simulaciones) {
 }
 media_exp_100 <- mean(resultado_exp_100)
 sd_exp_100 <- sd(resultado_exp_100)
-hist(resultado_exp_100, main = 'Histograma de resultado con n = 100', xlab = "Media", col = 'lightgreen', prob = T)
-lines(density(resultado_exp_100), col = 'blue')
+hist(resultado_exp_100, main = 'Histograma de resultado con n = 100', xlab = "Media", col = 'lightgreen', prob = T,ylim = c(0,6))
+lines(density(resultado_exp_100), col = 'darkgreen')
 
 ### Con n = 500
 
@@ -133,7 +133,7 @@ for (i in 1:simulaciones) {
 media_exp_500 <- mean(resultado_exp_500)
 sd_exp_500 <- sd(resultado_exp_500)
 hist(resultado_exp_500, main = 'Histograma de resultado con n = 500', xlab = "Media", col = 'lightgreen', prob = T, ylim = c(0,10))
-lines(density(resultado_exp_500), col = 'blue')
+lines(density(resultado_exp_500), col = 'red')
 
 ### Con n = 1000
 
@@ -147,7 +147,7 @@ for (i in 1:simulaciones) {
 media_exp_1000 <- mean(resultado_exp_1000)
 sd_exp_1000 <- sd(resultado_exp_1000)
 hist(resultado_exp_1000, main = 'Histograma de resultado con n = 1000', xlab = "Media", col = 'lightgreen', prob = T, ylim = c(0,14))
-lines(density(resultado_exp_1000), col = 'blue')
+lines(density(resultado_exp_1000), col = 'pink')
 
 ### Grafico de densidades de Kernel
 
