@@ -170,5 +170,17 @@ legend('topright', legend = c('n=30', 'n=100', 'n=500', 'n=1000'), lwd = 4, col 
 minor.tick(nx = 2, ny = 2, tick.ratio = 0.5)
 
 #-------------------------------------------------------------------------
-#                             EJERCICIO 2
+#                             EJERCICIO 3
 #-------------------------------------------------------------------------
+library(tidyverse)
+library(fs)
+setwd("/Users/tomastemudio/Desktop/Di Tella/Tercer Año/Segundo Semestre/LAB/R/DOMICILIARIO_R/Data_1900_1970")
+
+archivos <- list.files(pattern = "US")
+
+results <- vector(mode = 'integer', length = length(data_files))
+for (i in 1:length(data_files)){
+  data <- read.csv(data_files[i])
+  count <- nrow(data)
+  results[i] <- count
+}
