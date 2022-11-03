@@ -44,7 +44,7 @@ for (i in 1:simulaciones) {
 media_100 <- mean(resultado_100)
 sd_100 <- sd(resultado_100)
 glue('n utilizado: {n2}; media: {media_100}; desvio estandar: {sd_100}')
-hist(resultado_100, main = 'Histograma de resultado', xlab = "Media", col = 'lightblue', prob =T)
+hist(resultado_100, main = 'Histograma de resultado con n = 100', xlab = "Media", col = 'lightblue', prob =T)
 lines(density(resultado_100), col = 'darkgreen')
 
 ### Con n = 500
@@ -59,7 +59,7 @@ for (i in 1:simulaciones) {
 media_500 <- mean(resultado_500)
 sd_500 <- sd(resultado_500)
 glue('n utilizado: {n3}; media: {media_500}; desvio estandar: {sd_500}')
-hist(resultado_500, main = 'Histograma de resultado', xlab = "Media", col = 'lightblue', prob = T)
+hist(resultado_500, main = 'Histograma de resultado con n = 500', xlab = "Media", col = 'lightblue', prob = T)
 lines(density(resultado_500), col = 'red')
 
 ### Con n = 1000
@@ -74,7 +74,7 @@ for (i in 1:simulaciones) {
 media_1000 <- mean(resultado_1000)
 sd_1000 <- sd(resultado_1000)
 glue('n utilizado: {n4}; media: {media_1000}; desvio estandar: {sd_1000}')
-hist(resultado_1000, main = 'Histograma de resultado', xlab = "Media", col = 'lightblue', prob = T, ylim = c(0,14))
+hist(resultado_1000, main = 'Histograma de resultado con n = 1000', xlab = "Media", col = 'lightblue', prob = T, ylim = c(0,14))
 lines(density(resultado_1000), col = 'pink')
 
 ## II)
@@ -91,7 +91,7 @@ lines(densidad_500, col = 'red', lwd=4)
 densidad_1000 <- density(resultado_1000)
 lines(densidad_1000, col = 'pink', lwd=4)
 
-legend('topright', legend = c('n=30', 'n=100', 'n=500', 'n=1000'), lwd = 4, col = c('blue', 'darkgreen', 'red', 'pink'))
+legend('topright', legend = c('n = 30', 'n = 100', 'n = 500', 'n = 1000'), lwd = 4, col = c('blue', 'darkgreen', 'red', 'pink'))
 minor.tick(nx = 2, ny = 2, tick.ratio = 0.5)
 
 ## III)
@@ -174,13 +174,23 @@ minor.tick(nx = 2, ny = 2, tick.ratio = 0.5)
 #-------------------------------------------------------------------------
 library(tidyverse)
 library(fs)
+library(dplyr)
+library(tidyr)
 setwd("/Users/tomastemudio/Desktop/Di Tella/Tercer Año/Segundo Semestre/LAB/R/DOMICILIARIO_R/Data_1900_1970")
 
-archivos <- list.files(pattern = "US")
+archivos <- list.files(path ="/Users/tomastemudio/Desktop/Di Tella/Tercer Año/Segundo Semestre/LAB/R/DOMICILIARIO_R/Data_1900_1970", pattern = "US")
 
-results <- vector(mode = 'integer', length = length(data_files))
-for (i in 1:length(data_files)){
-  data <- read.csv(data_files[i])
-  count <- nrow(data)
-  results[i] <- count
+data <- data.frame()
+for (i in 1:length(archivos)){
+  lectura <- read.csv(archivos[i])
+  data <- rbind(data, lectura)
+}
+data_filtrado <- data %>% select(-starts_with('x'),-contains(c('element','year','month')))
+
+tomas <- data_filtrado %>% pivot_wider(names_from = ID, values_from = data_filtrado[,2:32])
+
+for (i in 1:length(archivos)) {
+  lectura <- read.csv(archivos[i])
+  agregar <- lectura %>% select(contains("Val"))
+  left_join(data, agregar)
 }
