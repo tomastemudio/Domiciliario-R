@@ -176,21 +176,51 @@ library(tidyverse)
 library(fs)
 library(dplyr)
 library(tidyr)
+library(anytime)
+library(lubridate)
 setwd("/Users/tomastemudio/Desktop/Di Tella/Tercer Año/Segundo Semestre/LAB/R/DOMICILIARIO_R/Data_1900_1970")
 
-archivos <- list.files(path ="/Users/tomastemudio/Desktop/Di Tella/Tercer Año/Segundo Semestre/LAB/R/DOMICILIARIO_R/Data_1900_1970", pattern = "US")
+archivos <- list.files(pattern = "US")
 
 data <- data.frame()
 for (i in 1:length(archivos)){
   lectura <- read.csv(archivos[i])
   data <- rbind(data, lectura)
 }
-data_filtrado <- data %>% select(-starts_with('x'),-contains(c('element','year','month')))
+data_filtrado <- data %>% select(-starts_with('x'),-contains(c('element')))
 
-tomas <- data_filtrado %>% pivot_wider(names_from = ID, values_from = data_filtrado[,2:32])
 
-for (i in 1:length(archivos)) {
-  lectura <- read.csv(archivos[i])
-  agregar <- lectura %>% select(contains("Val"))
-  left_join(data, agregar)
+dates <- data.frame(Date = as.Date(NULL)) # sequencia de dias 
+
+for (i in 1:length(archivos)){
+  archivo <- read.csv(archivos[1])
+  archivo <- archivo %>% select('ID',"year",'month', starts_with("Val"))
+  id <- unique(archivo$ID)
+  colnames(archivo) <- c("ID","year", "month", 1:31)
+  archivo <- pivot_longer(archivo, cols = 4:34, names_to = "Day", values_to = "Rain") # completar
+  archivo <- archivo %>% mutate(Date = paste(year,"-", month,"-", Day)) %>% 
+             select(-year, -month, -Day) %>% 
+             select(ID, Date, Rain)
+  archivo <- pivot_wider(archivo, names_from = ID, values_from = Rain)
+  dates <- left_join(archivo, dates, by = "Date") #completa
 }
+
+dates <- data.frame(Date = as.Date(NULL)) # sequencia de dias 
+
+for (i in 1:length(archivos)){
+  archivo <- read.csv(archivos[3])
+  archivo <- archivo %>% select('ID',"year",'month', starts_with("Val"))
+  id <- unique(archivo$ID)
+  colnames(archivo) <- c("ID","year", "month", 1:31)
+  archivo <- pivot_longer(archivo, cols = 4:34, names_to = "Day", values_to = "Rain") # completar
+  archivo <- archivo %>% mutate(Date = make_date(year = archivo$year, month = archivo$month, day = archivo$Day)) %>% 
+    select(-year, -month, -Day) %>% 
+    select(ID, Date, Rain)
+  archivo <- pivot_wider(archivo, names_from = ID, values_from = Rain)
+  dates <- left_join(archivo, dates, by = "Date") #completa
+}
+
+
+#-------------------------------------------------------------------------
+#                             EJERCICIO 5
+#-------------------------------------------------------------------------
