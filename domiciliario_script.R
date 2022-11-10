@@ -176,51 +176,66 @@ library(tidyverse)
 library(fs)
 library(dplyr)
 library(tidyr)
-library(anytime)
 library(lubridate)
 setwd("/Users/tomastemudio/Desktop/Di Tella/Tercer Año/Segundo Semestre/LAB/R/DOMICILIARIO_R/Data_1900_1970")
 
-archivos <- list.files(pattern = "US")
+# I)
 
-data <- data.frame()
-for (i in 1:length(archivos)){
-  lectura <- read.csv(archivos[i])
-  data <- rbind(data, lectura)
-}
-data_filtrado <- data %>% select(-starts_with('x'),-contains(c('element')))
+files <- list.files(pattern = "US")
 
+dates <- data.frame(date = seq(as.Date("1900/1/1"), as.Date("1970/12/31"), "days"))
 
-dates <- data.frame(Date = as.Date(NULL)) # sequencia de dias 
-
-for (i in 1:length(archivos)){
-  archivo <- read.csv(archivos[1])
-  archivo <- archivo %>% select('ID',"year",'month', starts_with("Val"))
-  id <- unique(archivo$ID)
-  colnames(archivo) <- c("ID","year", "month", 1:31)
-  archivo <- pivot_longer(archivo, cols = 4:34, names_to = "Day", values_to = "Rain") # completar
-  archivo <- archivo %>% mutate(Date = paste(year,"-", month,"-", Day)) %>% 
-             select(-year, -month, -Day) %>% 
-             select(ID, Date, Rain)
-  archivo <- pivot_wider(archivo, names_from = ID, values_from = Rain)
-  dates <- left_join(archivo, dates, by = "Date") #completa
+id <- NULL
+for (i in 1:length(files)){
+  data <- read.csv(files[i])
+  id <- c(id, unique(data$ID))
+  data <- data %>% select('ID',"year",'month', starts_with("Val")) 
+  colnames(data) <- c("ID","year", "month", 1:31)
+  data <- pivot_longer(data, cols = 4:34, names_to = "day", values_to = "station")
+  data <- data %>% mutate(date = make_date(year = data$year, month = data$month, day = data$day))
+  data <- data %>% select(-c(ID, year, month, day)) %>% select(date, station)
+  dates <- left_join(dates, data, by = "date")
 }
 
-dates <- data.frame(Date = as.Date(NULL)) # sequencia de dias 
+# II)
 
-for (i in 1:length(archivos)){
-  archivo <- read.csv(archivos[3])
-  archivo <- archivo %>% select('ID',"year",'month', starts_with("Val"))
-  id <- unique(archivo$ID)
-  colnames(archivo) <- c("ID","year", "month", 1:31)
-  archivo <- pivot_longer(archivo, cols = 4:34, names_to = "Day", values_to = "Rain") # completar
-  archivo <- archivo %>% mutate(Date = make_date(year = archivo$year, month = archivo$month, day = archivo$Day)) %>% 
-    select(-year, -month, -Day) %>% 
-    select(ID, Date, Rain)
-  archivo <- pivot_wider(archivo, names_from = ID, values_from = Rain)
-  dates <- left_join(archivo, dates, by = "Date") #completa
+flags <- data.frame(date = seq(as.Date("1900/1/1"), as.Date("1970/12/31"), "days"))
+
+for (i in 1:length(files)) {
+  data_flags <- read.csv(files[i])
+  data_flags <- data_flags %>% select("year", "month", contains("xxQ"))
+  colnames(data_flags) <- c("year", "month", 1:31)
+  data_flags <- pivot_longer(data_flags, cols = 3:33, names_to = "day", values_to = "flags")
+  data_flags <- data_flags %>% mutate(date = make_date(year = data_flags$year, month = data_flags$month, day = data_flags$day))
+  data_flags <- data_flags %>% select(-c(year, month, day)) %>% select(date, flags)
+  flags <- left_join(flags, data_flags, by = "date")
 }
+
+# III)
+
+prueba <- left_join(dates, flags, by = "date")
+
 
 
 #-------------------------------------------------------------------------
 #                             EJERCICIO 5
 #-------------------------------------------------------------------------
+
+data <- read.csv("/Users/tomastemudio/Desktop/Di Tella/Tercer Año/Segundo Semestre/LAB/R/DOMICILIARIO_R/earnings.csv")
+model_prueba <- lm(earnk ~ age, data = data )
+summary(model_prueba)
+resid <- deviance(model_prueba)
+
+agregar <- c()
+
+residuos <- numeric()
+for (i in 1:length(data)) {
+  variable <- data[,1]
+  model <- lm(earnk ~ variable, data = data)
+  residuos <- c(residuos, deviance(model))
+}
+residuos <- residuos[-4]
+min(residuos)
+which.min(residuos)
+sort(residuos[2])
+order(residuos)
