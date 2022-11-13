@@ -7,7 +7,11 @@
 library(glue)
 library(ggplot2)
 library(Hmisc)
-
+library(tidyverse)
+library(fs)
+library(dplyr)
+library(tidyr)
+library(lubridate)
 #-------------------------------------------------------------------------
 #                             EJERCICIO 1
 #-------------------------------------------------------------------------
@@ -170,14 +174,444 @@ legend('topright', legend = c('n=30', 'n=100', 'n=500', 'n=1000'), lwd = 4, col 
 minor.tick(nx = 2, ny = 2, tick.ratio = 0.5)
 
 #-------------------------------------------------------------------------
+#                             EJERCICIO 2
+#-------------------------------------------------------------------------
+library(pacman)
+p_load(data.table,fixest,stargazer,dplyr,magrittr,MonteCarlo)
+
+#parametros
+beta_0 <- 3 # intercepto
+beta_1 <- 1 # pendiente
+n <- 10     # Tamaño muestra
+r <- 1000  # Numero de iteraciones
+
+#guardado 
+
+pendiente_dt <- rep(0,r)
+intercepto_dt <- rep(0,r)
+
+#Monte carlo
+for (i in 1:r){ #  r nuemero de iteraciones
+  
+  # Generate data
+  U_i = rnorm(n, mean = 0, sd = 12) # Error
+  X_i = rnorm(n, mean = 2, sd = 1) # variable independiente
+  Y_i = beta_0 + beta_1*X_i + U_i  # variable dependiente
+  
+  #armamos la tabla 
+  data_i = data.table(Y = Y_i, X = X_i)
+  #corremos la regresion 
+  ols_i <- fixest::feols(data = data_i, Y ~ X)
+  #Extraemos coeficciontes y guardamos 
+  pendiente_dt[i] <- ols_i$coefficients[2]
+  intercepto_dt[i] <- ols_i$coefficients[1]
+}
+
+#Estimamos todo 
+Estimacion_dt <- data.table(beta_1=pendiente_dt,beta_0=intercepto_dt)
+stargazer(Estimacion_dt[,c("beta_1","beta_0")],type = "text")
+
+#hacemos el loop 
+#definimos la funcion 
+ols_estimador <- function(n, beta_0, beta_1){
+  
+  # generamos la data
+  U_i = rnorm(n, mean = 0, sd = 12) # Error
+  X_i = rnorm(n, mean = 2, sd = 1) # variable independiente
+  Y_i = beta_0 + beta_1*X_i + U_i  # variable dependiente
+  
+  # Formulamos el data.table
+  data_i = data.table(Y = Y_i, X = X_i)
+  
+  # corremos la regresion
+  ols_i <- feols(data = data_i, Y ~ X)
+  
+  # extraemos coeficiente de la pendiente e intercepto y guardamos
+  intercepto <- ols_i$coefficients[1]
+  pendiente <- ols_i$coefficients[2]
+  
+  # Return Results in a list
+  return(list("beta_1" = unname(pendiente),"beta_0" = unname(intercepto)))
+}
+
+
+## definimos parametros de la grilla
+n_grilla <- c(10,20,100,200, 500, 1000)   # tamaño de muestra
+beta0_grilla <- c(3)          # Intercept0
+beta1_grilla <- c(1)          # coeficiente de la pendiente
+
+## colectamos parametros de la grilla en una lista
+param_list = list("n" = n_grilla, "beta_0" = beta0_grilla, "beta_1" = beta1_grilla)
+
+## corremos simulacion
+MC_resultados_OLS <- MonteCarlo::MonteCarlo (func = ols_estimador,   
+                                             nrep = 1000,              # Numero de simulaciones
+                                             param_list = param_list, # Prametros de la grilla(tamaño de muestra y betas)
+                                             ncpus = 1,               # numero de compus
+                                             time_n_test = FALSE)     # Que tan largo va a durar?
+
+## vemos resultados
+resultados <- MC_resultados_OLS$results
+beta1<- resultados$beta_1
+beta0<- resultados$beta_0
+
+
+n_10 <- beta1[1,,,]   
+n_20 <- beta1[2,,,] 
+n_100 <- beta1[3,,,] 
+n_200 <- beta1[4,,,] 
+n_500 <- beta1[5,,,] 
+n_1000 <- beta1[6,,,] 
+
+hist(n_10, xlim = c(-20,20))
+hist(n_200, xlim = c(-20,20))
+hist(n_1000, xlim = c(-20,20))
+#Hacemos los test y armamos la tabla 
+#Primer Test 
+test_10 <- t.test(beta1[1,,,],mu=1)
+P_10 <- test_10$p.value
+t_10 <- test_10$statistic
+M_10 <- mean(beta1[1,,,])
+Sample_10 <- c(M_10,P_10,t_10)
+
+test_20 <- t.test(beta1[2,,,],mu=1)
+A_20 <- test_20$alternative
+P_20 <- test_20$p.value
+t_20 <- test_20$statistic
+M_20 <- mean(beta1[2,,,])
+Sample_20 <- c(M_20,P_20,t_20)
+
+test_100 <- t.test(beta1[3,,,],mu=1)
+P_100 <- test_100$p.value
+t_100 <- test_100$statistic
+M_100 <- mean(beta1[3,,,])
+Sample_100 <- c(M_100,P_100,t_100)
+
+test_200 <- t.test(beta1[4,,,],mu=1)
+P_200 <- test_200$p.value
+t_200 <- test_200$statistic
+M_200 <- mean(beta1[4,,,])
+Sample_200 <- c(M_200,P_200,t_200)
+
+test_500 <- t.test(beta1[5,,,],mu=1)
+P_500 <- test_500$p.value
+t_500<- test_500$statistic
+M_500 <- mean(beta1[5,,,])
+Sample_500 <- c(M_500,P_500,t_500)
+
+test_1000 <- t.test(beta1[6,,,],mu=1)
+P_1000 <- test_1000$p.value
+t_1000<- test_1000$statistic
+M_1000<- mean(beta1[6,,,])
+Sample_1000 <- c(M_1000,P_1000,t_1000)
+
+nombre_filas <- c("mean","p","t")
+Tabla_punto_1 <- data.frame(nombre_filas,Sample_10,Sample_20,Sample_100,Sample_200,Sample_500,Sample_1000)
+
+#otra hipotesis 
+
+test_10b <- t.test(beta1[1,,,],mu=0.5)
+P_10b <- test_10b$p.value
+t_10b <- test_10b$statistic
+M_10b <- mean(beta1[1,,,])
+Sample_10b <- c(M_10b,P_10b,t_10b)
+
+test_20b <- t.test(beta1[2,,,],mu=0.5)
+A_20b <- test_20b$alternative
+P_20b <- test_20b$p.value
+t_20b <- test_20b$statistic
+M_20b <- mean(beta1[2,,,])
+Sample_20b <- c(M_20b,P_20b,t_20b)
+
+test_100b <- t.test(beta1[3,,,],mu=0.5)
+P_100b <- test_100b$p.value
+t_100b <- test_100b$statistic
+M_100b <- mean(beta1[3,,,])
+Sample_100b <- c(M_100b,P_100b,t_100b)
+
+test_200b <- t.test(beta1[4,,,],mu=0.5)
+P_200b <- test_200b$p.value
+t_200b <- test_200b$statistic
+M_200b <- mean(beta1[4,,,])
+Sample_200b <- c(M_200b,P_200b,t_200b)
+
+test_500b <- t.test(beta1[5,,,],mu=0.5)
+P_500b<- test_500b$p.value
+t_500b<- test_500b$statistic
+M_500b <- mean(beta1[5,,,])
+Sample_500b <- c(M_500b,P_500b,t_500b)
+
+test_1000b <- t.test(beta1[6,,,],mu=0.5)
+P_1000b <- test_1000b$p.value
+t_1000b<- test_1000b$statistic
+M_1000b<- mean(beta1[6,,,])
+Sample_1000b <- c(M_1000b,P_1000b,t_1000b)
+
+nombre_filas <- c("mean","p","t")
+Tabla_punto_1b <- data.frame(nombre_filas,Sample_10b,Sample_20b,Sample_100b,Sample_200b,Sample_500b,Sample_1000b)
+
+
+#punto 2 
+
+#definimos la funcion 
+ols_estimador <- function(n, beta_0, beta_1){
+  
+  # generamos la data
+  X_i = rnorm(n, mean = 2, sd = 1) # variable independiente
+  U_i = rnorm(n, mean = 0, sd= 4/exp(4.5)*exp(X_i)) # Error
+  Y_i = beta_0 + beta_1*X_i + U_i  # variable dependiente
+  
+  # Formulamos el data.table
+  data_i = data.table(Y = Y_i, X = X_i)
+  
+  # corremos la regresion
+  ols_i <- feols(data = data_i, Y ~ X)
+  
+  # extraemos coeficiente de la pendiente e intercepto y guardamos
+  intercepto <- ols_i$coefficients[1]
+  pendiente <- ols_i$coefficients[2]
+  
+  # Return Results in a list
+  return(list("beta_1" = unname(pendiente),"beta_0" = unname(intercepto)))
+}
+
+
+## definimos parametros de la grilla
+n_grilla <- c(10,20,100,200, 500, 1000)   # tamaño de muestra
+beta0_grilla <- c(3)          # Intercept0
+beta1_grilla <- c(1)          # coeficiente de la pendiente
+
+## colectamos parametros de la grilla en una lista
+param_list = list("n" = n_grilla, "beta_0" = beta0_grilla, "beta_1" = beta1_grilla)
+
+## corremos simulacion
+MC_resultados_OLS <- MonteCarlo::MonteCarlo (func = ols_estimador,   
+                                             nrep = 1000,              # Numero de simulaciones
+                                             param_list = param_list, # Prametros de la grilla(tamaño de muestra y betas)
+                                             ncpus = 1,               # numero de compus
+                                             time_n_test = FALSE)     # Que tan largo va a durar?
+
+## vemos resultados
+resultados <- MC_resultados_OLS$results
+beta1<- resultados$beta_1
+beta0<- resultados$beta_0
+
+
+n_10 <- beta1[1,,,]   
+n_20 <- beta1[2,,,] 
+n_100 <- beta1[3,,,] 
+n_200 <- beta1[4,,,] 
+n_500 <- beta1[5,,,] 
+n_1000 <- beta1[6,,,] 
+
+hist(n_10)
+hist(n_200)
+hist(n_1000)
+
+#testeamos
+
+test_10 <- t.test(beta1[1,,,],mu=1)
+P_10 <- test_10$p.value
+t_10 <- test_10$statistic
+M_10 <- mean(beta1[1,,,])
+Sample_10 <- c(M_10,P_10,t_10)
+
+test_20 <- t.test(beta1[2,,,],mu=1)
+A_20 <- test_20$alternative
+P_20 <- test_20$p.value
+t_20 <- test_20$statistic
+M_20 <- mean(beta1[2,,,])
+Sample_20 <- c(M_20,P_20,t_20)
+
+test_100 <- t.test(beta1[3,,,],mu=1)
+P_100 <- test_100$p.value
+t_100 <- test_100$statistic
+M_100 <- mean(beta1[3,,,])
+Sample_100 <- c(M_100,P_100,t_100)
+
+test_200 <- t.test(beta1[4,,,],mu=1)
+P_200 <- test_200$p.value
+t_200 <- test_200$statistic
+M_200 <- mean(beta1[4,,,])
+Sample_200 <- c(M_200,P_200,t_200)
+
+test_500 <- t.test(beta1[5,,,],mu=1)
+P_500 <- test_500$p.value
+t_500<- test_500$statistic
+M_500 <- mean(beta1[5,,,])
+Sample_500 <- c(M_500,P_500,t_500)
+
+test_1000 <- t.test(beta1[6,,,],mu=1)
+P_1000 <- test_1000$p.value
+t_1000<- test_1000$statistic
+M_1000<- mean(beta1[6,,,])
+Sample_1000 <- c(M_1000,P_1000,t_1000)
+
+nombre_filas <- c("mean","p","t")
+Tabla_punto_2 <- data.frame(nombre_filas,Sample_10,Sample_20,Sample_100,Sample_200,Sample_500,Sample_1000)
+
+
+#otra hipotesis
+
+
+test_10b <- t.test(beta1[1,,,],mu=0.5)
+P_10b <- test_10b$p.value
+t_10b <- test_10b$statistic
+M_10b <- mean(beta1[1,,,])
+Sample_10b <- c(M_10b,P_10b,t_10b)
+
+test_20b <- t.test(beta1[2,,,],mu=0.5)
+A_20b <- test_20b$alternative
+P_20b <- test_20b$p.value
+t_20b <- test_20b$statistic
+M_20b <- mean(beta1[2,,,])
+Sample_20b <- c(M_20b,P_20b,t_20b)
+
+test_100b <- t.test(beta1[3,,,],mu=0.5)
+P_100b <- test_100b$p.value
+t_100b <- test_100b$statistic
+M_100b <- mean(beta1[3,,,])
+Sample_100b <- c(M_100b,P_100b,t_100b)
+
+test_200b <- t.test(beta1[4,,,],mu=0.5)
+P_200b <- test_200b$p.value
+t_200b <- test_200b$statistic
+M_200b <- mean(beta1[4,,,])
+Sample_200b <- c(M_200b,P_200b,t_200b)
+
+test_500b <- t.test(beta1[5,,,],mu=0.5)
+P_500b<- test_500b$p.value
+t_500b<- test_500b$statistic
+M_500b <- mean(beta1[5,,,])
+Sample_500b <- c(M_500b,P_500b,t_500b)
+
+test_1000b <- t.test(beta1[6,,,],mu=0.5)
+P_1000b <- test_1000b$p.value
+t_1000b<- test_1000b$statistic
+M_1000b<- mean(beta1[6,,,])
+Sample_1000b <- c(M_1000b,P_1000b,t_1000b)
+
+nombre_filas <- c("mean","p","t")
+Tabla_punto_2b <- data.frame(nombre_filas,Sample_10b,Sample_20b,Sample_100b,Sample_200b,Sample_500b,Sample_1000b)
+
+#punto 3 
+#a Es igual al inciso 1 
+#b
+ols_estimador <- function(n, beta_0, beta_1){
+  
+  # generamos la data
+  X_i = rnorm(n, mean = 2, sd = 1) # variable independiente
+  U_i = ((2352/5)^0.5)*(pbeta(X_i,2,5)-2/7) # Error
+  Y_i = beta_0 + beta_1*X_i + U_i  # variable dependiente
+  
+  # Formulamos el data.table
+  data_i = data.table(Y = Y_i, X = X_i)
+  
+  # corremos la regresion
+  ols_i <- feols(data = data_i, Y ~ X)
+  
+  # extraemos coeficiente de la pendiente e intercepto y guardamos
+  intercepto <- ols_i$coefficients[1]
+  pendiente <- ols_i$coefficients[2]
+  
+  # Return Results in a list
+  return(list("beta_1" = unname(pendiente),"beta_0" = unname(intercepto)))
+}
+
+
+## definimos parametros de la grilla
+n_grilla <- c(10,20,100,200, 500, 1000)   # tamaño de muestra
+beta0_grilla <- c(3)          # Intercept0
+beta1_grilla <- c(1)          # coeficiente de la pendiente
+
+## colectamos parametros de la grilla en una lista
+param_list = list("n" = n_grilla, "beta_0" = beta0_grilla, "beta_1" = beta1_grilla)
+
+## corremos simulacion
+MC_resultados_OLS <- MonteCarlo::MonteCarlo (func = ols_estimador,   
+                                             nrep = 1000,              # Numero de simulaciones
+                                             param_list = param_list, # Prametros de la grilla(tamaño de muestra y betas)
+                                             ncpus = 1,               # numero de compus
+                                             time_n_test = FALSE)     # Que tan largo va a durar?
+
+## vemos resultados
+resultados <- MC_resultados_OLS$results
+beta1<- resultados$beta_1
+beta0<- resultados$beta_0
+
+
+n_10 <- beta1[1,,,]   
+n_20 <- beta1[2,,,] 
+n_100 <- beta1[3,,,] 
+n_200 <- beta1[4,,,] 
+n_500 <- beta1[5,,,] 
+n_1000 <- beta1[6,,,] 
+
+hist(n_10, xlim = c(-20,20))
+hist(n_200, xlim = c(-20,20))
+hist(n_1000, xlim = c(-20,20))
+
+#c
+ols_estimador <- function(n, beta_0, beta_1){
+  
+  # generamos la data
+  X_i = rnorm(n, mean = 2, sd = 1) # variable independiente
+  U_i = (75^0.5)*(pbinom(0,8,0.5)-1/8) # Error
+  Y_i = beta_0 + beta_1*X_i + U_i  # variable dependiente
+  
+  # Formulamos el data.table
+  data_i = data.table(Y = Y_i, X = X_i)
+  
+  # corremos la regresion
+  ols_i <- feols(data = data_i, Y ~ X)
+  
+  # extraemos coeficiente de la pendiente e intercepto y guardamos
+  intercepto <- ols_i$coefficients[1]
+  pendiente <- ols_i$coefficients[2]
+  
+  # Return Results in a list
+  return(list("beta_1" = unname(pendiente),"beta_0" = unname(intercepto)))
+}
+
+
+## definimos parametros de la grilla
+n_grilla <- c(10,20,100,200, 500, 1000)   # tamaño de muestra
+beta0_grilla <- c(3)          # Intercept0
+beta1_grilla <- c(1)          # coeficiente de la pendiente
+
+## colectamos parametros de la grilla en una lista
+param_list = list("n" = n_grilla, "beta_0" = beta0_grilla, "beta_1" = beta1_grilla)
+
+## corremos simulacion
+MC_resultados_OLS <- MonteCarlo::MonteCarlo (func = ols_estimador,   
+                                             nrep = 1000,              # Numero de simulaciones
+                                             param_list = param_list, # Prametros de la grilla(tamaño de muestra y betas)
+                                             ncpus = 1,               # numero de compus
+                                             time_n_test = FALSE)     # Que tan largo va a durar?
+
+## vemos resultados
+resultados <- MC_resultados_OLS$results
+beta1<- resultados$beta_1
+beta0<- resultados$beta_0
+
+
+n_10 <- beta1[1,,,]   
+n_20 <- beta1[2,,,] 
+n_100 <- beta1[3,,,] 
+n_200 <- beta1[4,,,] 
+n_500 <- beta1[5,,,] 
+n_1000 <- beta1[6,,,] 
+
+hist(n_10, xlim = c(-2,2))
+hist(n_200, xlim = c(-2,2))
+hist(n_1000, xlim = c(-2,2))
+
+#-------------------------------------------------------------------------
 #                             EJERCICIO 3
 #-------------------------------------------------------------------------
-library(tidyverse)
-library(fs)
-library(dplyr)
-library(tidyr)
-library(lubridate)
-setwd("/Users/tomastemudio/Desktop/Di Tella/Tercer Año/Segundo Semestre/LAB/R/DOMICILIARIO_R/Data_1900_1970")
+
+
+setwd("") # Poner el path al archivo "Data_1900_1970"
 
 # I)
 
@@ -188,12 +622,13 @@ dates <- data.frame(date = seq(as.Date("1900/1/1"), as.Date("1970/12/31"), "days
 id <- NULL
 for (i in 1:length(files)){
   data <- read.csv(files[i])
-  id <- c(id, unique(data$ID))
+  # id <- c(id, unique(data$ID))
+  id <- unique(data$ID)
   data <- data %>% select('ID',"year",'month', starts_with("Val")) 
   colnames(data) <- c("ID","year", "month", 1:31)
-  data <- pivot_longer(data, cols = 4:34, names_to = "day", values_to = "station")
+  data <- pivot_longer(data, cols = 4:34, names_to = "day", values_to = id)
   data <- data %>% mutate(date = make_date(year = data$year, month = data$month, day = data$day))
-  data <- data %>% select(-c(ID, year, month, day)) %>% select(date, station)
+  data <- data %>% select(-c(ID, year, month, day)) %>% select(date, id)
   dates <- left_join(dates, data, by = "date")
 }
 
@@ -203,39 +638,311 @@ flags <- data.frame(date = seq(as.Date("1900/1/1"), as.Date("1970/12/31"), "days
 
 for (i in 1:length(files)) {
   data_flags <- read.csv(files[i])
+  id <- unique(data_flags$ID)
   data_flags <- data_flags %>% select("year", "month", contains("xxQ"))
   colnames(data_flags) <- c("year", "month", 1:31)
-  data_flags <- pivot_longer(data_flags, cols = 3:33, names_to = "day", values_to = "flags")
+  data_flags <- pivot_longer(data_flags, cols = 3:33, names_to = "day", values_to = id)
   data_flags <- data_flags %>% mutate(date = make_date(year = data_flags$year, month = data_flags$month, day = data_flags$day))
-  data_flags <- data_flags %>% select(-c(year, month, day)) %>% select(date, flags)
+  data_flags <- data_flags %>% select(-c(year, month, day)) %>% select(date, id)
   flags <- left_join(flags, data_flags, by = "date")
 }
 
 # III)
 
-prueba <- left_join(dates, flags, by = "date")
+unified_dates <- pivot_longer(dates, 2:750 , names_to = "station", values_to = "rain")
 
+unified_flags <- pivot_longer(flags, 2:750, names_to = "station", values_to = "rain")
+unified_flags$rain <- as.integer(unified_flags$rain)
+
+unified_dataframe <- left_join(unified_dates, unified_flags, by = c("station" = "station", "date" = "date"))
+colnames(unified_dataframe) <- c("date", "station", "rain", "flags")
+
+unified_dataframe$flags <- ifelse(!is.na(unified_dataframe$flags), unified_dataframe$rain, unified_dataframe$flags)
+
+# IV)
+
+max_observation <- unified_dataframe %>% arrange(desc(rain)) %>% slice(1:10)
+
+# V)
+
+
+#-------------------------------------------------------------------------
+#                             EJERCICIO 4
+#-------------------------------------------------------------------------
+
+# Inciso 1
+# Con X, Y, a y b dados, creamos una funcion que simplemente sigue la formula para la suma de cuadrados residuales (RSS)
+
+RSS_funcion <- function(x,y,a,b){
+  sum((y - (a + b*x))^2)
+}  
+
+# ========================================================================
+
+# Inciso 2
+
+# Utilizamos el archivo hibbs.dat, lo leemos como tabla y obtenemos los valores de las variables "vote" y "growth". Logramos ver que el beta de growth (Beta1) es igual a 3.0605 y el intercept (el Beta0) es igual a 46.2476.
+
+datos <- read.table(file = "", header = TRUE) # Poner el path al archivo "hibbs.dat.txt
+
+regresionej4 <- lm(vote ~ growth, data = datos)
+summary(regresionej4)
+
+# ========================================================================
+
+# Inciso 3
+
+# De acuerdo a la consigna, aqui usaremos
+# b = 3.0605
+# x = growth
+# y = vote
+
+beta <- 3.0605
+alpha <- as.numeric(seq(-1000, 1000))
+x <- datos$vote
+y <- datos$growth
+
+options(max.print = 1000000)
+grafico <- data.frame(alpha, sumaresid = NA)
+
+for(alpha in seq(-1000, 1000)){
+  grafico$sumaresid[alpha+1001] <- RSS_funcion(x, y, alpha, beta)
+}
+which.min(grafico$sumaresid)
+
+# Grafico
+ggplot(data = grafico, aes(x=alpha, y=sumaresid)) +
+  geom_line( color="blue") +
+  ggtitle("Variación de la suma de residuos cuadrados con un alpha cambiante")
+
+
+# Ahora debemos repetir el mismo proceso pero con alpha fijo y beta variable
+
+beta2 <- as.numeric(seq(-1000, 1000))
+alpha2 <- 46.2476
+
+grafico2 <- data.frame(beta2, sumaresid2 = NA)
+
+for(beta2 in seq(-1000, 1000)){
+  grafico2$sumaresid2[beta2+1001] <- RSS_funcion(x, y, alpha2, beta2)
+}
+
+# Grafico
+ggplot(data = grafico2, aes(x=beta2, y=sumaresid2)) +
+  geom_line(color="blue") +
+  ggtitle("Variación de la suma de residuos cuadrados con un beta cambiante")
+
+# ========================================================================
+
+# Inciso 4
+
+# Creamos una funcion para calcular la suma de desvios absolutos
+
+desvios_funcion <- function(x,y,a,b){
+  sum(abs(y - (a + b*x)))
+}
+
+#Hago nuevamente el loop y el grafico
+
+alpha3 <- as.numeric(seq(-1000, 1000))
+grafico3 <- data.frame(alpha3, sumadesvios = NA)
+
+for(alpha3 in seq(-1000, 1000)){
+  grafico3$sumadesvios[alpha3+1001] <- desvios_funcion(x, y, alpha3, beta)
+}
+
+ggplot(data = grafico3, aes(x=alpha3, y=sumadesvios)) +
+  geom_line( color="blue") +
+  ggtitle("Variación de la suma de desvios absolutos con un alpha cambiante")
+
+# Repito el proceso con alpha fijo y beta cambiante
+
+beta3 <- as.numeric(seq(-1000, 1000))
+grafico4 <- data.frame(beta3, sumadesvios = NA)
+
+for(beta3 in seq(-1000, 1000)){
+  grafico4$sumadesvios[beta3+1001] <- desvios_funcion(x, y, alpha2, beta3)
+}
+
+ggplot(data = grafico4, aes(x=beta3, y=sumadesvios)) +
+  geom_line( color="blue") +
+  ggtitle("Variación de la suma de desvios absolutos con un beta cambiante")
 
 
 #-------------------------------------------------------------------------
 #                             EJERCICIO 5
 #-------------------------------------------------------------------------
 
-data <- read.csv("/Users/tomastemudio/Desktop/Di Tella/Tercer Año/Segundo Semestre/LAB/R/DOMICILIARIO_R/earnings.csv")
-model_prueba <- lm(earnk ~ age, data = data )
-summary(model_prueba)
-resid <- deviance(model_prueba)
+data <- read.csv("")  # Poner el path al archivo "earnings.csv"
 
-agregar <- c()
+# I) Forward stepwise selection
 
-residuos <- numeric()
-for (i in 1:length(data)) {
-  variable <- data[,1]
-  model <- lm(earnk ~ variable, data = data)
-  residuos <- c(residuos, deviance(model))
+M0 <- lm(earnk ~ 1, data = data)
+
+residuos_1 <- numeric()
+data_wo_earnk <- data[-4]
+for (i in 1:length(data_wo_earnk)) {
+  variable <- data_wo_earnk[,i]
+  M1 <- lm(earnk ~ variable, data = data)
+  residuos_1 <- c(residuos_1, deviance(M1))
+  name_column_1 <- colnames(data_wo_earnk[which.min(residuos_1)])
 }
-residuos <- residuos[-4]
-min(residuos)
-which.min(residuos)
-sort(residuos[2])
-order(residuos)
+
+residuos_2 <- numeric()
+data_wo_earnk2 <- data_wo_earnk[-7]
+for (i in 1:length(data_wo_earnk2)) {
+  variable_2 <- data_wo_earnk2[,i]
+  M2 <- lm(earnk ~ data[,8] + variable_2, data = data)
+  residuos_2 <- c(residuos_2, deviance(M2))
+  name_column_2 <- colnames(data_wo_earnk2[which.min(residuos_2)])
+}
+
+residuos_3 <- numeric()
+data_wo_earnk3 <- data_wo_earnk2[-3]
+for (i in 1:length(data_wo_earnk3)) {
+  variable_3 <- data_wo_earnk3[,i]
+  M3 <- lm(earnk ~ data[,8] + data[,3] + variable_3, data = data)
+  residuos_3 <- c(residuos_3, deviance(M3))
+  name_column_3 <- colnames(data_wo_earnk3[which.min(residuos_3)])
+}
+
+residuos_4 <- numeric()
+data_wo_earnk4 <- data_wo_earnk3[-4]
+for (i in 1:length(data_wo_earnk4)) {
+  variable_4 <- data_wo_earnk4[,i]
+  M4 <- lm(earnk ~ data[,8] + data[,3] + data[,6] + variable_4, data = data)
+  residuos_4 <- c(residuos_4, deviance(M4))
+  name_column_4 <- colnames(data_wo_earnk4[which.min(residuos_4)])
+}
+
+residuos_5 <- numeric()
+data_wo_earnk5 <- data_wo_earnk4[-4]
+for (i in 1:length(data_wo_earnk5)) {
+  variable_5 <- data_wo_earnk5[,i]
+  M5 <- lm(earnk ~ data[,8] + data[,3] + data[,6] + data[,7] + variable_5, data = data)
+  residuos_5 <- c(residuos_5, deviance(M5))
+  name_column_5 <- colnames(data_wo_earnk5[which.min(residuos_5)])
+}
+
+residuos_6 <- numeric()
+data_wo_earnk6 <- data_wo_earnk5[-9]
+for (i in 1:length(data_wo_earnk6)) {
+  variable_6 <- data_wo_earnk6[,i]
+  M6 <- lm(earnk ~ data[,8] + data[,3] + data[,6] + data[,7] + data[,14] + variable_6, data = data)
+  residuos_6 <- c(residuos_6, deviance(M6))
+  name_column_6 <- colnames(data_wo_earnk6[which.min(residuos_6)])
+}
+
+residuos_7 <- numeric()
+data_wo_earnk7 <- data_wo_earnk6[-2]
+for (i in 1:length(data_wo_earnk7)) {
+  variable_7 <- data_wo_earnk7[,i]
+  M7 <- lm(earnk ~ data[,8] + data[,3] + data[,6] + data[,7] + data[,14] + data[,2] + variable_7, data = data)
+  residuos_7 <- c(residuos_7, deviance(M7))
+  name_column_7 <- colnames(data_wo_earnk7[which.min(residuos_7)])
+}
+
+residuos_8 <- numeric()
+data_wo_earnk8 <- data_wo_earnk7[-1]
+for (i in 1:length(data_wo_earnk8)) {
+  variable_8 <- data_wo_earnk8[,i]
+  M8 <- lm(earnk ~ data[,8] + data[,3] + data[,6] + data[,7] + data[,14] + data[,2] + data[,1] + variable_8, data = data)
+  residuos_8 <- c(residuos_8, deviance(M8))
+  name_column_8 <- colnames(data_wo_earnk8[which.min(residuos_8)])
+}
+
+residuos_9 <- numeric()
+data_wo_earnk9 <- data_wo_earnk8[-1]
+for (i in 1:length(data_wo_earnk9)) {
+  variable_9 <- data_wo_earnk9[,i]
+  M9 <- lm(earnk ~ data[,8] + data[,3] + data[,6] + data[,7] + data[,14] + data[,2] + data[,1] + data[,5] + variable_9, data = data)
+  residuos_9 <- c(residuos_9, deviance(M9))
+  name_column_9 <- colnames(data_wo_earnk9[which.min(residuos_9)])
+}
+
+residuos_10 <- numeric()
+data_wo_earnk10 <- data_wo_earnk9[-4]
+for (i in 1:length(data_wo_earnk10)) {
+  variable_10 <- data_wo_earnk10[,i]
+  M10 <- lm(earnk ~ data[,8] + data[,3] + data[,6] + data[,7] + data[,14] + data[,2] + data[,1] + data[,5] + data[,12] + variable_10, data = data)
+  residuos_10 <- c(residuos_10, deviance(M10))
+  name_column_10 <- colnames(data_wo_earnk10[which.min(residuos_10)])
+}
+
+residuos_11 <- numeric()
+data_wo_earnk11 <- data_wo_earnk10[-2]
+for (i in 1:length(data_wo_earnk11)) {
+  variable_11 <- data_wo_earnk11[,i]
+  M11 <- lm(earnk ~ data[,8] + data[,3] + data[,6] + data[,7] + data[,14] + data[,2] + data[,1] + data[,5] + data[,12] + data[,10] + variable_11, data = data)
+  residuos_11 <- c(residuos_11, deviance(M11))
+  name_column_11 <- colnames(data_wo_earnk11[which.min(residuos_11)])
+}
+
+residuos_12 <- numeric()
+data_wo_earnk12 <- data_wo_earnk11[-2]
+for (i in 1:length(data_wo_earnk12)) {
+  variable_12 <- data_wo_earnk12[,i]
+  M12 <- lm(earnk ~ data[,8] + data[,3] + data[,6] + data[,7] + data[,14] + data[,2] + data[,1] + data[,5] + data[,12] + data[,10] + data[,11] + variable_12, data = data)
+  residuos_12 <- c(residuos_12, deviance(M12))
+  name_column_12 <- colnames(data_wo_earnk12[which.min(residuos_12)])
+}
+
+residuos_13 <- numeric()
+data_wo_earnk13 <- data_wo_earnk12[-1]
+variable_13 <- data_wo_earnk13[,]
+M13 <- lm(earnk ~ data[,8] + data[,3] + data[,6] + data[,7] + data[,14] + data[,2] + data[,1] + data[,5] + data[,12] + data[,10] + data[,11] + data[,11] + variable_13, data = data)
+residuos_13 <- c(residuos_13, deviance(M13))
+name_column_13 <- colnames(data_wo_earnk13[which.min(residuos_13)])
+
+# Buscamos el modelo con menor AIC
+AIC_forward <- AIC(M1,M2,M3,M4,M5,M6,M7,M8,M9,M10,M11,M12,M13)
+# Nos quedamos solo con la columna de valores de los AIC.
+AIC_forward <- AIC_forward %>% select(AIC)
+min_AIC_forward <- min(AIC_forward)
+# El modelo con menor AIC es el M8.
+
+# II) Backward stepwise selection
+
+M1_back <- lm(earnk ~ ., data = data)
+hola <- as.data.frame(drop1(M1_back))
+which.max(hola$RSS) #male
+data$male <- NULL
+
+M2_back <- lm(earnk ~ ., data = data)
+hola2 <- as.data.frame(drop1(M2_back))
+which.max(hola2$RSS) #height
+data$height <- NULL
+
+M3_back <- lm(earnk ~ ., data = data)
+hola3 <- as.data.frame(drop1(M3_back))
+which.max(hola3$RSS) #weight
+data$weight <- NULL
+
+M4_back <- lm(earnk ~ ., data = data)
+hola4 <- as.data.frame(drop1(M4_back))
+which.max(hola4$RSS) #age
+data$age <- NULL
+
+M5_back <- lm(earnk ~ ., data = data)
+hola5 <- as.data.frame(drop1(M5_back))
+which.max(hola5$RSS) #ethnicity
+data$ethnicity <- NULL
+
+M6_back <- lm(earnk ~ ., data = data)
+hola6 <- as.data.frame(drop1(M6_back))
+which.max(hola6$RSS) #smokenow
+data$smokenow <- NULL
+
+M7_back <- lm(earnk ~ ., data = data)
+hola7 <- as.data.frame(drop1(M7_back))
+which.max(hola7$RSS) #exercise
+data$exercise <- NULL
+
+M8_back <- lm(earnk ~ ., data = data)
+hola8 <- as.data.frame(drop1(M8_back))
+which.max(hola8$RSS) #walk
+data$walk <- NULL
+
+M9_back <- lm(earnk ~ ., data = data)
+hola9 <- as.data.frame(drop1(M9_back))
+which.max(hola9$RSS) #todas las restantes
