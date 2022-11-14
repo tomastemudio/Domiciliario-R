@@ -904,45 +904,45 @@ min_AIC_forward <- min(AIC_forward)
 # II) Backward stepwise selection
 
 M1_back <- lm(earnk ~ ., data = data)
-hola <- as.data.frame(drop1(M1_back))
-which.max(hola$RSS) #male
+table <- as.data.frame(drop1(M1_back))
+which.max(table$RSS) #male
 data$male <- NULL
 
 M2_back <- lm(earnk ~ ., data = data)
-hola2 <- as.data.frame(drop1(M2_back))
-which.max(hola2$RSS) #height
+table2 <- as.data.frame(drop1(M2_back))
+which.max(table2$RSS) #height
 data$height <- NULL
 
 M3_back <- lm(earnk ~ ., data = data)
-hola3 <- as.data.frame(drop1(M3_back))
-which.max(hola3$RSS) #weight
+table3 <- as.data.frame(drop1(M3_back))
+which.max(table3$RSS) #weight
 data$weight <- NULL
 
 M4_back <- lm(earnk ~ ., data = data)
-hola4 <- as.data.frame(drop1(M4_back))
-which.max(hola4$RSS) #age
+table4 <- as.data.frame(drop1(M4_back))
+which.max(table4$RSS) #age
 data$age <- NULL
 
 M5_back <- lm(earnk ~ ., data = data)
-hola5 <- as.data.frame(drop1(M5_back))
-which.max(hola5$RSS) #ethnicity
+table5 <- as.data.frame(drop1(M5_back))
+which.max(table5$RSS) #ethnicity
 data$ethnicity <- NULL
 
 M6_back <- lm(earnk ~ ., data = data)
-hola6 <- as.data.frame(drop1(M6_back))
-which.max(hola6$RSS) #smokenow
+table6 <- as.data.frame(drop1(M6_back))
+which.max(table6$RSS) #smokenow
 data$smokenow <- NULL
 
 M7_back <- lm(earnk ~ ., data = data)
-hola7 <- as.data.frame(drop1(M7_back))
-which.max(hola7$RSS) #exercise
+table7 <- as.data.frame(drop1(M7_back))
+which.max(table7$RSS) #exercise
 data$exercise <- NULL
 
 M8_back <- lm(earnk ~ ., data = data)
-hola8 <- as.data.frame(drop1(M8_back))
-which.max(hola8$RSS) #walk
+table8 <- as.data.frame(drop1(M8_back))
+which.max(table8$RSS) #walk
 data$walk <- NULL
 
 M9_back <- lm(earnk ~ ., data = data)
-hola9 <- as.data.frame(drop1(M9_back))
-which.max(hola9$RSS) #todas las restantes
+table9 <- as.data.frame(drop1(M9_back))
+which.max(table9$RSS) #todas las restantes
